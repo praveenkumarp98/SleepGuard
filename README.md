@@ -218,3 +218,7 @@ It's how the screenshots in `docs/` were made.
 
 Inspired by [Amphetamine](https://apps.apple.com/app/amphetamine/id937984704) (battery cutoff, fail-safe),
 [Lungo](https://sindresorhus.com/lungo) (stop when unplugged) and Theine (duration menu).
+
+## License
+
+[MIT](LICENSE): free to use, change and share. Provided as is, without warranty.
