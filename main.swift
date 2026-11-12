@@ -179,20 +179,25 @@ func formatClock(_ seconds: TimeInterval) -> String {
     return h > 0 ? String(format: "%d:%02d:%02d", h, m, sec) : String(format: "%d:%02d", m, sec)
 }
 
-/// "90" → 90 min, "1:30" → 90, "2h" → 120, "2h30" / "2h 30m" → 150.
+/// "90" → 90 min, "1:30" → 90, "2 mins" → 2, "2h" / "2 hours" → 120, "2h30" / "1 hr 30 min" → 150.
 func parseMinutes(_ s: String) -> Int? {
-    let t = s.lowercased().replacingOccurrences(of: " ", with: "").replacingOccurrences(of: "m", with: "")
+    let t = s.lowercased().trimmingCharacters(in: .whitespaces)
+    if let n = Int(t) { return n }
     if t.contains(":") {
-        let p = t.split(separator: ":").map { Int($0) }
+        let p = t.split(separator: ":").map { Int($0.trimmingCharacters(in: .whitespaces)) }
         guard p.count == 2, let h = p[0], let m = p[1] else { return nil }
         return h * 60 + m
     }
-    if t.contains("h") {
-        let p = t.split(separator: "h", omittingEmptySubsequences: false)
-        guard let h = Int(p[0]) else { return nil }
-        return h * 60 + (p.count > 1 && !p[1].isEmpty ? Int(p[1]) ?? 0 : 0)
+    // Optional hours part, then optional minutes part; the minutes unit may be left off ("2h30").
+    let pattern = #"^(?:(\d+)\s*(?:h|hr|hrs|hour|hours))?\s*(?:(\d+)\s*(?:m|min|mins|minute|minutes)?)?$"#
+    guard let re = try? NSRegularExpression(pattern: pattern),
+          let match = re.firstMatch(in: t, range: NSRange(t.startIndex..., in: t)) else { return nil }
+    func group(_ i: Int) -> Int? {
+        Range(match.range(at: i), in: t).flatMap { Int(t[$0]) }
     }
-    return Int(t)
+    let h = group(1), m = group(2)
+    guard h != nil || m != nil else { return nil }
+    return (h ?? 0) * 60 + (m ?? 0)
 }
 
 // MARK: - App
