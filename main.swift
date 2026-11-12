@@ -240,7 +240,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
         // A block SleepGuard didn't start (raw `sudo pmset`, or left over from a crash) shows a ⚠️ state
         // and is undone when the lid closes — see check().
 
-        if !defaults.bool(forKey: "loginSetUp") {
+        if !defaults.bool(forKey: "loginSetUp") && !CommandLine.arguments.contains("--snapshot") {
             defaults.set(true, forKey: "loginSetUp")
             try? SMAppService.mainApp.register()
         }
