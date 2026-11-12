@@ -91,6 +91,46 @@ enum Power {
     static func sleepNow() { run("/usr/bin/pmset", ["sleepnow"]) }
 }
 
+// MARK: - Fail-safe job
+
+/// Every 60 s: if sleep is blocked and SleepGuard isn't running (crash, force-quit, raw `sudo pmset`),
+/// turn sleep back on. The app writes and loads this launchd job itself on each launch, so downloaded
+/// copies get it too. The script is written from this string (not copied from the bundle), so it never
+/// carries a download's quarantine flag.
+enum FailSafe {
+    static let label = "local.sleepguard.failsafe"
+    static let script = """
+    #!/bin/sh
+    # SleepGuard fail-safe, run every 60 s by launchd. If sleep is blocked while SleepGuard
+    # isn't running (crash, force-quit, or a raw `sudo pmset`), turn sleep back on.
+    /usr/sbin/ioreg -r -n IOPMrootDomain -d 1 | /usr/bin/grep -q '"SleepDisabled" = Yes' || exit 0
+    /usr/bin/pgrep -xq SleepGuard && exit 0
+    /usr/bin/sudo -n /usr/bin/pmset -a disablesleep 0
+
+    """
+
+    static func install() {
+        let fm = FileManager.default
+        let home = fm.homeDirectoryForCurrentUser
+        let dir = home.appendingPathComponent("Library/Application Support/SleepGuard")
+        let scriptURL = dir.appendingPathComponent("failsafe.sh")
+        let plistURL = home.appendingPathComponent("Library/LaunchAgents/\(label).plist")
+        let plist: [String: Any] = ["Label": label, "ProgramArguments": ["/bin/sh", scriptURL.path],
+                                    "StartInterval": 60, "RunAtLoad": true]
+        guard let plistData = try? PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0) else { return }
+        let domain = "gui/\(getuid())"
+        let upToDate = (try? String(contentsOf: scriptURL, encoding: .utf8)) == script
+            && (try? Data(contentsOf: plistURL)) == plistData
+        if upToDate && Power.run("/bin/launchctl", ["print", "\(domain)/\(label)"]) { return }
+        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        try? fm.createDirectory(at: plistURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? script.write(to: scriptURL, atomically: true, encoding: .utf8)
+        try? plistData.write(to: plistURL)
+        Power.run("/bin/launchctl", ["bootout", "\(domain)/\(label)"])
+        Power.run("/bin/launchctl", ["bootstrap", domain, plistURL.path])
+    }
+}
+
 // MARK: - Icons
 
 /// SF Symbol as a template image, so it follows light/dark mode and the menu's highlight colour.
@@ -245,9 +285,12 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
         // A block SleepGuard didn't start (raw `sudo pmset`, or left over from a crash) shows a ⚠️ state
         // and is undone when the lid closes — see check().
 
-        if !defaults.bool(forKey: "loginSetUp") && !CommandLine.arguments.contains("--snapshot") {
-            defaults.set(true, forKey: "loginSetUp")
-            try? SMAppService.mainApp.register()
+        if !CommandLine.arguments.contains("--snapshot") {
+            FailSafe.install()
+            if !defaults.bool(forKey: "loginSetUp") {
+                defaults.set(true, forKey: "loginSetUp")
+                try? SMAppService.mainApp.register()
+            }
         }
 
         buildMainMenu()

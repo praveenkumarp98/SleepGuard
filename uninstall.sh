@@ -2,20 +2,22 @@
 # Removes SleepGuard completely: turns sleep back on, removes the app, its login item,
 # the fail-safe job, its settings, and (asking for your password) the sudoers rule.
 set -u
-APP="$HOME/Applications/SleepGuard.app"
+APPS=("$HOME/Applications/SleepGuard.app" "/Applications/SleepGuard.app")   # built from source / downloaded
 SUPPORT="$HOME/Library/Application Support/SleepGuard"
 PLIST="$HOME/Library/LaunchAgents/local.sleepguard.failsafe.plist"
 
 echo "Removing SleepGuard…"
 
 # Remove from Login Items, then quit the app.
-[[ -x "$APP/Contents/MacOS/SleepGuard" ]] && "$APP/Contents/MacOS/SleepGuard" --unregister-login
+for APP in $APPS; do
+  [[ -x "$APP/Contents/MacOS/SleepGuard" ]] && "$APP/Contents/MacOS/SleepGuard" --unregister-login
+done
 pkill -x SleepGuard 2>/dev/null
 
 # Stop and remove the fail-safe job.
 launchctl bootout "gui/$(id -u)/local.sleepguard.failsafe" 2>/dev/null
 rm -f "$PLIST"
-rm -rf "$SUPPORT" "$APP"
+rm -rf "$SUPPORT" $APPS
 defaults delete local.sleepguard 2>/dev/null
 
 # Make sure sleep is back on, then remove the sudoers rule (both may ask for your password).

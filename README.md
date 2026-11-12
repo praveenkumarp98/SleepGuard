@@ -60,37 +60,46 @@ You can switch the icon to 😴 in Settings.
 
 ## Requirements
 
-- macOS 14 Sonoma or later, Apple silicon or Intel
-- Apple's Command Line Tools, to compile it (a one-time download from Apple). If you've never installed them:
-
-  ```bash
-  xcode-select --install
-  ```
-
-  If you already have Xcode, you're set.
+macOS 14 Sonoma or later, on Apple silicon or Intel.
 
 ## Install
 
-1. **Download and build.** In Terminal:
+### Option 1: Download (easiest)
 
-   ```bash
-   git clone https://github.com/praveenkumarp98/SleepGuard.git
-   cd SleepGuard
-   ./install.sh
-   ```
+1. **[Download SleepGuard.zip](https://github.com/praveenkumarp98/SleepGuard/releases/latest/download/SleepGuard.zip)**
+   (from the latest [release](https://github.com/praveenkumarp98/SleepGuard/releases/latest)).
+2. Open the zip (double-click) and drag **SleepGuard** into your **Applications** folder.
+3. Open SleepGuard. The first time, macOS blocks it, because it isn't notarized by Apple
+   (that needs a paid developer account). To allow it, once:
+   - **macOS 15 and later:** in the *"SleepGuard" Not Opened* message, click **Done**. Then open
+     **System Settings → Privacy & Security**, scroll down to *"SleepGuard" was blocked…*,
+     click **Open Anyway**, and confirm.
+   - **macOS 14:** right-click SleepGuard in Applications, choose **Open**, then **Open** again.
 
-   This builds the app on your Mac (about a minute), installs it to `~/Applications/SleepGuard.app`,
-   adds the small fail-safe job, and opens the app. It needs no admin password.
+   If you'd rather check the code first, build it yourself with Option 2.
 
-2. **Look for 💤 in your menu bar.** The SleepGuard window also opens. macOS may show a
-   *"Background Items Added"* notification: that's SleepGuard's *Open at login* setting, which you can
-   turn off in the app.
+### Option 2: Build from source
 
-3. **One-time setup.** The first time you start a block (or click **Set Up…** in the window),
+Needs Apple's Command Line Tools (a one-time download). If you've never installed them, run
+`xcode-select --install` first (if you have Xcode, you're set). Then:
+
+```bash
+git clone https://github.com/praveenkumarp98/SleepGuard.git
+cd SleepGuard
+./install.sh
+```
+
+This builds the app on your Mac (about a minute), installs it to `~/Applications/SleepGuard.app` and opens it.
+It needs no admin password, and macOS doesn't show the "not opened" warning for apps you build yourself.
+
+### Then
+
+1. **Look for 💤 in your menu bar.** The SleepGuard window also opens. macOS may show a
+   *"Background Items Added"* notification: that's SleepGuard's *Open at login* setting and its fail-safe,
+   which you can turn off in the app.
+2. **One-time setup.** The first time you start a block (or click **Set Up…** in the window),
    SleepGuard explains what it needs and asks for your Mac password **once**. See
    [What the one-time setup does](#what-the-one-time-setup-does).
-
-Because you build the app yourself, macOS doesn't show the "unidentified developer" warning.
 
 ## Use
 
@@ -118,37 +127,34 @@ turns sleep back on before quitting.
 
 ## Update
 
-```bash
-cd SleepGuard
-git pull
-./install.sh
-```
+- **Downloaded:** quit SleepGuard, download the latest zip, and replace the app in Applications.
+- **Built from source:** `cd SleepGuard`, `git pull`, then `./install.sh`.
 
 ## Uninstall
+
+Dragging the app to the Bin leaves its fail-safe job, login item and sudoers rule behind, so remove it like this.
+
+**Downloaded:** paste this into Terminal. It asks for your password at the end, to remove the sudoers rule.
+
+```bash
+for a in /Applications ~/Applications; do [ -x "$a/SleepGuard.app/Contents/MacOS/SleepGuard" ] && "$a/SleepGuard.app/Contents/MacOS/SleepGuard" --unregister-login; done
+pkill -x SleepGuard
+launchctl bootout gui/$(id -u)/local.sleepguard.failsafe
+rm -f ~/Library/LaunchAgents/local.sleepguard.failsafe.plist
+rm -rf /Applications/SleepGuard.app ~/Applications/SleepGuard.app "$HOME/Library/Application Support/SleepGuard"
+defaults delete local.sleepguard
+sudo pmset -a disablesleep 0
+sudo rm -f /etc/sudoers.d/sleepguard
+```
+
+**Built from source:**
 
 ```bash
 cd SleepGuard
 ./uninstall.sh
 ```
 
-This turns sleep back on if needed, removes the app, its login item, the fail-safe job, its settings,
-and the sudoers rule. It asks for your password for that last step. Then you can delete the `SleepGuard` folder.
-
-<details>
-<summary>Uninstall by hand (if you've deleted the folder)</summary>
-
-```bash
-~/Applications/SleepGuard.app/Contents/MacOS/SleepGuard --unregister-login
-pkill -x SleepGuard
-launchctl bootout gui/$(id -u)/local.sleepguard.failsafe
-rm -f ~/Library/LaunchAgents/local.sleepguard.failsafe.plist
-rm -rf ~/Applications/SleepGuard.app "$HOME/Library/Application Support/SleepGuard"
-defaults delete local.sleepguard
-sudo pmset -a disablesleep 0
-sudo rm -f /etc/sudoers.d/sleepguard
-```
-
-</details>
+Both turn sleep back on and remove the app, its login item, the fail-safe job, your settings and the sudoers rule.
 
 ## How it works
 
@@ -170,8 +176,8 @@ Remove the file (or run `./uninstall.sh`) to undo it.
 
 | Path | What it is |
 |---|---|
-| `~/Applications/SleepGuard.app` | The app |
-| `~/Library/LaunchAgents/local.sleepguard.failsafe.plist` | Runs the fail-safe every 60 s |
+| `/Applications/SleepGuard.app` (download) or `~/Applications/SleepGuard.app` (source) | The app |
+| `~/Library/LaunchAgents/local.sleepguard.failsafe.plist` | Runs the fail-safe every 60 s. The app creates it when it starts |
 | `~/Library/Application Support/SleepGuard/failsafe.sh` | If sleep is disabled and SleepGuard isn't running, turns sleep back on |
 | `/etc/sudoers.d/sleepguard` | The one-time setup rule (only after you approve it) |
 | `~/Library/Preferences/local.sleepguard.plist` | Your settings |
@@ -181,8 +187,8 @@ Remove the file (or run `./uninstall.sh`) to undo it.
 - It reads the lid state, `SleepDisabled` and the battery straight from macOS (IOKit), every 5 seconds.
 - A block ends with `pmset -a disablesleep 0`. If the lid is closed and no external display is driving the Mac,
   `pmset sleepnow` follows.
-- The code is plain AppKit + SwiftUI in two files, `main.swift` (logic, menu bar) and `Window.swift` (window),
-  built with `swiftc` by `install.sh`. There's no Xcode project.
+- The code is plain AppKit + SwiftUI in two files, `main.swift` (logic, menu bar, fail-safe) and
+  `Window.swift` (window), built with `swiftc` into one universal app (Apple silicon + Intel). There's no Xcode project.
 
 ## Troubleshooting
 
@@ -195,23 +201,27 @@ Quit a few other menu bar apps, or open the window from Spotlight ("SleepGuard")
 **The Mac didn't go to sleep when the block ended.** If it's connected to an external display and power,
 macOS keeps it awake with the lid closed (clamshell mode). That's normal. Sleep *is* back on.
 
+**"SleepGuard" Not Opened / can't be opened.** See step 3 of [Option 1](#option-1-download-easiest).
+Or, in Terminal: `xattr -dr com.apple.quarantine /Applications/SleepGuard.app`, then open it again.
+
 **`install.sh` says the Swift compiler isn't found.** Run `xcode-select --install`, then run `./install.sh` again.
 
-**Check what SleepGuard sees:**
+**Check what SleepGuard sees** (use `~/Applications` if you built from source):
 
 ```bash
-~/Applications/SleepGuard.app/Contents/MacOS/SleepGuard --status
+/Applications/SleepGuard.app/Contents/MacOS/SleepGuard --status
 ```
 
 ## Development
 
 | File | Purpose |
 |---|---|
-| `main.swift` | Sleep/lid/battery logic, menu bar, one-time setup |
+| `main.swift` | Sleep/lid/battery logic, menu bar, one-time setup, fail-safe job |
 | `Window.swift` | The SwiftUI window |
 | `makeicon.swift` | Draws the app icon (edit colours/shapes here) |
+| `build.sh` | Builds the universal `build/SleepGuard.app` |
 | `install.sh` / `uninstall.sh` | Build + install / remove everything |
-| `failsafe.sh` | The fail-safe job's script |
+| `make-release.sh` | Builds `build/SleepGuard.zip` for a GitHub Release (keep the asset name `SleepGuard.zip`) |
 
 `SleepGuard --snapshot <dir>` renders the window (idle and running, light and dark) to PNGs.
 It's how the screenshots in `docs/` were made.
