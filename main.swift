@@ -16,8 +16,11 @@ enum Mac {
         defer { IOObjectRelease(svc) }
         return IORegistryEntryCreateCFProperty(svc, key as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue()
     }
-    static var sleepDisabled: Bool { (rootProp("SleepDisabled") as? Bool) ?? false }
-    static var lidClosed: Bool { (rootProp("AppleClamshellState") as? Bool) ?? false }
+    /// Set by `--snapshot` so README screenshots show a clean "sleep allowed" state.
+    static var demo = false
+    static var demoSleepDisabled = false
+    static var sleepDisabled: Bool { demo ? demoSleepDisabled : (rootProp("SleepDisabled") as? Bool) ?? false }
+    static var lidClosed: Bool { demo ? false : (rootProp("AppleClamshellState") as? Bool) ?? false }
     /// False when docked (external display + power), where a closed lid keeps the Mac awake anyway.
     static var lidCausesSleep: Bool { (rootProp("AppleClamshellCausesSleep") as? Bool) ?? true }
 
@@ -524,13 +527,23 @@ if CommandLine.arguments.contains("--status") {
     exit(0)
 }
 
+// Used by uninstall.sh: removes SleepGuard from Login Items.
+if CommandLine.arguments.contains("--unregister-login") {
+    try? SMAppService.mainApp.unregister()
+    exit(0)
+}
+
 let app = NSApplication.shared
 let delegate = App()
 
 // Dev aid: `SleepGuard --snapshot <dir>` renders the window in light and dark mode to PNGs, then exits.
 if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLine.arguments.count {
     let dir = CommandLine.arguments[i + 1]
+    Mac.demo = true
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        delegate.setupDone = true
+        delegate.lastEnded = nil
+        delegate.durationText = "1:00"
         func shoot(_ name: String, _ look: NSAppearance.Name) {
             delegate.window?.appearance = NSAppearance(named: look)
             RunLoop.main.run(until: Date().addingTimeInterval(0.6))
@@ -541,6 +554,7 @@ if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLi
         }
         shoot("now-light", .aqua); shoot("now-dark", .darkAqua)
         // Simulated running block (display only; pmset is not touched).
+        Mac.demoSleepDisabled = true
         delegate.startedAt = Date().addingTimeInterval(-1200)
         delegate.endsAt = Date().addingTimeInterval(3600)
         shoot("active-light", .aqua); shoot("active-dark", .darkAqua)
