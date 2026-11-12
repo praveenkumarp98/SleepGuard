@@ -222,6 +222,7 @@ Or, in Terminal: `xattr -dr com.apple.quarantine /Applications/SleepGuard.app`, 
 | `build.sh` | Builds the universal `build/SleepGuard.app` |
 | `install.sh` / `uninstall.sh` | Build + install / remove everything |
 | `make-release.sh` | Builds `build/SleepGuard.zip` for a GitHub Release (keep the asset name `SleepGuard.zip`) |
+| `docs/make-social-preview.swift` | Draws `docs/social-preview.png`, the image shown when the repo link is shared |
 
 `SleepGuard --snapshot <dir>` renders the window (idle and running, light and dark) to PNGs.
 It's how the screenshots in `docs/` were made.
