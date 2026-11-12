@@ -226,6 +226,23 @@ Or, in Terminal: `xattr -dr com.apple.quarantine /Applications/SleepGuard.app`, 
 `SleepGuard --snapshot <dir>` renders the window (idle and running, light and dark) to PNGs.
 It's how the screenshots in `docs/` were made.
 
+### Branches and releases
+
+- **`stable`** is the default branch: the latest released version, what you get from `git clone`.
+- **`main`** is where work happens. It may be ahead of the latest release and not ready yet.
+
+To release a new version:
+
+```bash
+git checkout main            # bump CFBundleShortVersionString in Info.plist, then commit
+git checkout stable && git merge --ff-only main && git push
+git tag -a v1.1.0 -m "SleepGuard 1.1.0" && git push origin v1.1.0
+./make-release.sh            # only runs on stable; builds build/SleepGuard.zip
+git checkout main
+```
+
+Then create a GitHub Release for the tag and attach `build/SleepGuard.zip` (keep that exact name).
+
 Inspired by [Amphetamine](https://apps.apple.com/app/amphetamine/id937984704) (battery cutoff, fail-safe),
 [Lungo](https://sindresorhus.com/lungo) (stop when unplugged) and Theine (duration menu).
 

@@ -4,6 +4,17 @@
 set -euo pipefail
 cd "${0:A:h}"
 
+# Releases come from the stable branch only (main is for work in progress).
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [[ "$BRANCH" != stable ]]; then
+  echo "You're on '$BRANCH'. Releases are built from 'stable':  git checkout stable && git merge --ff-only main"
+  exit 1
+fi
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "Uncommitted changes; commit or stash them first, so the release matches the tagged code."
+  exit 1
+fi
+
 ./build.sh
 VERSION=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Info.plist)
 # --noextattr/--norsrc: leave out this Mac's extended attributes (e.g. com.apple.provenance) and ._ files.
