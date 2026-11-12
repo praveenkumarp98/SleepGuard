@@ -10,9 +10,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/window-idle-light.png" width="330" alt="SleepGuard window, idle, light mode">
+  <img src="docs/window-light.png" width="330" alt="SleepGuard window, light mode">
   &nbsp;&nbsp;
-  <img src="docs/window-active-dark.png" width="330" alt="SleepGuard window, keeping awake, dark mode">
+  <img src="docs/window-dark.png" width="330" alt="SleepGuard window, dark mode">
 </p>
 
 ---

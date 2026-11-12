@@ -555,9 +555,12 @@ if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLi
         shoot("now-light", .aqua); shoot("now-dark", .darkAqua)
         // Simulated running block (display only; pmset is not touched).
         Mac.demoSleepDisabled = true
-        delegate.startedAt = Date().addingTimeInterval(-1200)
-        delegate.endsAt = Date().addingTimeInterval(3600)
-        shoot("active-light", .aqua); shoot("active-dark", .darkAqua)
+        for (name, look) in [("active-light", NSAppearance.Name.aqua), ("active-dark", .darkAqua)] {
+            // Same frame in both themes: 1:24:05 left of a 1:44:05 block.
+            delegate.startedAt = Date().addingTimeInterval(-1200)
+            delegate.endsAt = Date().addingTimeInterval(5045 + 0.9)
+            shoot(name, look)
+        }
         exit(0)
     }
 }
