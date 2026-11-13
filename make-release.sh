@@ -7,7 +7,7 @@ cd "${0:A:h}"
 # Releases come from the stable branch only (main is for work in progress).
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 if [[ "$BRANCH" != stable ]]; then
-  echo "You're on '$BRANCH'. Releases are built from 'stable':  git checkout stable && git merge --ff-only main"
+  echo "You're on '$BRANCH'. Releases are built from 'stable': merge main into stable (pull request), then  git checkout stable && git pull"
   exit 1
 fi
 if [[ -n "$(git status --porcelain)" ]]; then

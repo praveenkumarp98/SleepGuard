@@ -255,6 +255,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
     var lastOnAC = true
     var activity: NSObjectProtocol?
     var window: NSWindow?
+    var confirmedQuit = false
 
     var batteryLimit: Int {
         get { defaults.object(forKey: "batteryLimit") as? Int ?? 20 }
@@ -309,6 +310,43 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         showWindow()
         return false
+    }
+
+    /// ⌘Q in the window (or Quit from the Dock) asks first: quitting removes the 💤 from the menu bar
+    /// until the app is opened again, which is easy to do by accident when you only meant to close the window.
+    /// The 💤 menu's "Quit SleepGuard" doesn't ask, and logging out or shutting down never waits on this.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if confirmedQuit || isSystemQuit { return .terminateNow }
+        NSApp.activate(ignoringOtherApps: true)
+        let a = NSAlert()
+        a.messageText = "Quit SleepGuard?"
+        a.informativeText = """
+        The 💤 icon leaves the menu bar until you open SleepGuard again\(endsAt != nil ? ", and the running block ends" : ""). \
+        To keep it in the menu bar, just close the window (⌘W).
+        """
+        enum Choice { case closeWindow, quit, cancel }
+        let choices: [Choice] = window?.isVisible == true ? [.closeWindow, .quit, .cancel] : [.quit, .cancel]
+        for c in choices {
+            a.addButton(withTitle: c == .closeWindow ? "Close Window" : c == .quit ? "Quit SleepGuard" : "Cancel")
+        }
+        let index = a.runModal().rawValue - NSApplication.ModalResponse.alertFirstButtonReturn.rawValue
+        switch choices.indices.contains(index) ? choices[index] : .cancel {
+        case .closeWindow:
+            window?.performClose(nil)
+            return .terminateCancel
+        case .quit:
+            if endsAt != nil { restore(reason: "Quit", byUser: true) }
+            return .terminateNow
+        case .cancel:
+            return .terminateCancel
+        }
+    }
+
+    /// True when macOS is quitting apps for a log-out, restart or shutdown.
+    var isSystemQuit: Bool {
+        guard let ev = NSAppleEventManager.shared().currentAppleEvent,
+              ev.eventClass == AEEventClass(kCoreEventClass), ev.eventID == AEEventID(kAEQuitApplication) else { return false }
+        return ev.attributeDescriptor(forKeyword: AEKeyword(kAEQuitReason)) != nil
     }
 
     func applicationWillTerminate(_ n: Notification) {
@@ -519,8 +557,10 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
         ])
     }
 
+    /// The 💤 menu's "Quit SleepGuard (allows sleep)": already explicit, so no confirmation.
     func quit() {
         if endsAt != nil { restore(reason: "Quit", byUser: true) }
+        confirmedQuit = true
         NSApp.terminate(nil)
     }
 
@@ -534,13 +574,13 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelega
             top.submenu = sub
             main.addItem(top)
         }
-        func key(_ i: NSMenuItem, _ k: String) -> NSMenuItem { i.keyEquivalent = k; return i }
         add("SleepGuard", [
             Item("About SleepGuard") { self.showAbout() },
             .separator(),
             NSMenuItem(title: "Hide SleepGuard", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h"),
             .separator(),
-            key(Item("Quit SleepGuard") { self.quit() }, "q"),
+            // Standard terminate, so ⌘Q goes through applicationShouldTerminate and asks first.
+            NSMenuItem(title: "Quit SleepGuard", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"),
         ])
         add("Edit", [
             NSMenuItem(title: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x"),

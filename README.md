@@ -234,15 +234,18 @@ It's how the screenshots in `docs/` were made.
 
 To release a new version:
 
-```bash
-git checkout main            # bump CFBundleShortVersionString in Info.plist, then commit
-git checkout stable && git merge --ff-only main && git push
-git tag -a v1.1.0 -m "SleepGuard 1.1.0" && git push origin v1.1.0
-./make-release.sh            # only runs on stable; builds build/SleepGuard.zip
-git checkout main
-```
+1. On `main`, bump `CFBundleShortVersionString` in `Info.plist`, commit and push.
+2. Open a pull request from `main` into `stable` and merge it (**Create a merge commit**).
+3. Tag the merged `stable` and build the zip:
 
-Then create a GitHub Release for the tag and attach `build/SleepGuard.zip` (keep that exact name).
+   ```bash
+   git checkout stable && git pull
+   git tag -a v1.1.0 -m "SleepGuard 1.1.0" && git push origin v1.1.0
+   ./make-release.sh            # only runs on stable; builds build/SleepGuard.zip
+   git checkout main
+   ```
+
+4. Create a GitHub Release for the tag and attach `build/SleepGuard.zip` (keep that exact name).
 
 Inspired by [Amphetamine](https://apps.apple.com/app/amphetamine/id937984704) (battery cutoff, fail-safe),
 [Lungo](https://sindresorhus.com/lungo) (stop when unplugged) and Theine (duration menu).
