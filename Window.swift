@@ -28,6 +28,10 @@ extension App {
 
     func windowWillClose(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        // Tear down the SwiftUI view so its 1 s TimelineView stops while closed; showWindow() rebuilds it.
+        // The hosting view keeps the window alive, so dropping our reference alone isn't enough.
+        window?.contentViewController = nil
+        window = nil
     }
 }
 
